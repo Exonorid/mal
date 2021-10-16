@@ -1,5 +1,5 @@
-const MalType = union(enum) {
-    Nil,
+pub const MalType = union(enum) {
+    Nil: void,
     List: []MalType,
     Int: i64,
     Bool: bool,
