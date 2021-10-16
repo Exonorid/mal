@@ -5,7 +5,8 @@ pub fn build(b: *std.build.Builder) void {
     const mode = b.standardReleaseOptions();
 
     const steps = [_][:0]const u8{
-        "repl"
+        "repl",
+        "read_print",
     };
     for(steps) |step_name, i| {
         const file_name = std.fmt.allocPrint(b.allocator, "step{X}_{s}.zig", .{i, step_name}) catch unreachable;
@@ -13,9 +14,8 @@ pub fn build(b: *std.build.Builder) void {
         exe.setTarget(target);
         exe.setBuildMode(mode);
         exe.install();
-        const run = exe.run();
         const step = b.step(exe.name, exe.name);
-        step.dependOn(&run.step);
+        step.dependOn(&exe.step);
         b.default_step.dependOn(&exe.step);
     }
 }
