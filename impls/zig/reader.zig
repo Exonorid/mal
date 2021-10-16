@@ -1,4 +1,5 @@
 const std = @import("std");
+const types = @import("types.zig");
 
 const PeekableReader = struct {
     str: []const u8,
@@ -74,9 +75,72 @@ pub const TokenReader = struct {
         if(self.pos == self.tokens.len) return null;
         return self.tokens[self.pos];
     }
+
+    pub fn readForm(reader: *TokenReader, allocator: *std.mem.Allocator) !types.MalType {
+        if(std.mem.eql(u8, reader.peek(), "(")) {
+            return reader.readList(allocator);
+        } else {
+            return readAtom(reader);
+        }
+    }
+
+    fn readList(reader: *TokenReader, allocator: *std.mem.Allocator) !types.MalType {
+        std.debug.assert(reader.skip());
+        var elems = std.ArrayList(MalType).init();
+        defer elems.deinit();
+        while(!std.mem.eql(u8, reader.peek() orelse break, ")")) {
+            try elems.append(reader.readForm(allocator));
+        } else {
+            //End of list ')'
+            return types.MalType{ .list = elems.toOwnedSlice() };
+        }
+        //EOF reached before ')'
+        return error.UnterminatedList;
+    }
+
+    fn readInt(token: Token) !i64 {
+        return std.fmt.parseInt(i64, token, 10);
+    }
+
+    fn readString(token: Token) ![]const u8 {
+        if(token[token.len - 1] != '"') return error.UnterminatedString;
+        return token[1..token.len - 2];
+    }
+
+    fn readAtom(reader: *TokenReader) !MalType {
+        const token = reader.next().?;
+        switch(token[0]) {
+            //Integer
+            '-' => {
+                if(token.len > 1 and (token[1] >= '0' and token[1] <= '9'))
+                    return types.MalType{ .Int = try readInt(token[1..]) * -1 };
+            },
+            '0'...'9' => {
+                return types.MalType{ .Int = try readInt(token) };
+            },
+            //Nil
+            'n' => {
+                if(std.mem.eql(u8, token, "nil")) return types.MalType{ .Nil };
+            },
+            //Bool (true/false)
+            't' => {
+                if(std.mem.eql(u8, token, "true")) return types.MalType{ .Bool = true };
+            },
+            'f' => {
+                if(std.mem.eql(u8, token, "false")) return types.MalType{ .Bool = false };
+            },
+            //String
+            '"' => {
+                return types.MalType{ .String = try readString(token) };
+            },
+            else => {}
+        }
+        //Default to symbol
+        return types.MalType{ .Sym = token };
+    }
 };
 
-pub fn read_str(allocator: *std.mem.Allocator, str: []const u8) !TokenReader {
+pub fn readStr(allocator: *std.mem.Allocator, str: []const u8) !TokenReader {
     return TokenReader{
         .tokens = try tokenize(allocator, str)
     };
@@ -151,7 +215,7 @@ pub fn tokenize(allocator: *std.mem.Allocator, str: []const u8) ![]Token {
 fn expectTokenization(allocator: *std.mem.Allocator, expected: []const Token, str: []const u8) !void {
     const actual = try tokenize(allocator, str);
     defer allocator.free(actual);
-    
+
     if (expected.len != actual.len) {
         std.debug.print("slice lengths differ. expected {d}, found {d}\n", .{ expected.len, actual.len });
         return error.TestExpectedEqual;
