@@ -16,6 +16,7 @@ pub fn build(b: *std.build.Builder) void {
         exe.install();
         const step = b.step(exe.name, exe.name);
         step.dependOn(&exe.step);
+        step.dependOn(&b.addInstallArtifact(exe).step);
         b.default_step.dependOn(&exe.step);
     }
 }
