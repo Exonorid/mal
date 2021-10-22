@@ -43,33 +43,37 @@ pub fn main() !void {
                 continue;
             },
             else => {
-                std.log.emerg("Unrecoverable error: {}", .{err});
+                std.log.emerg("Unrecoverable error {}", .{err});
                 std.process.exit(1);
             }
         }) orelse break;
         rep(input, allocator, stdout_writer) catch |err| switch(err) {
             error.EndOfTokens => {
-                std.log.err("Error: end of input", .{});
+                std.log.err("end of input", .{});
                 continue;
             },
             error.UnterminatedList => {
-                std.log.err("Error: unbalanced parentheses", .{});
+                std.log.err("unbalanced parentheses", .{});
                 continue;
             },
             error.UnterminatedString => {
-                std.log.err("Error: unbalanced quotes", .{});
+                std.log.err("unbalanced quotes", .{});
                 continue;
             },
             error.Overflow => {
-                std.log.err("Error: integer value is too large", .{});
+                std.log.err("integer value is too large", .{});
                 continue;
             },
             error.InvalidCharacter => {
-                std.log.err("Error: unexpected character in integer literal", .{});
+                std.log.err("unexpected character in integer literal", .{});
+                continue;
+            },
+            error.InvalidEscape => {
+                std.log.err("invalid escape sequence in string literal", .{});
                 continue;
             },
             else => {
-                std.log.emerg("Unrecoverable error: {}", .{err});
+                std.log.emerg("Unrecoverable error {}", .{err});
                 std.process.exit(1);
             }
         };
