@@ -17,7 +17,11 @@ fn print(value: types.MalType, writer: anytype) !void {
 
 fn rep(str: []const u8, allocator: *std.mem.Allocator, writer: anytype) !void {
     var token_reader = try read(str, allocator);
+    defer token_reader.free(allocator);
+
     const parsed = try eval(&token_reader, allocator);
+    defer parsed.free(allocator);
+
     try print(parsed, writer);
     try writer.writeByte('\n');
 }

@@ -82,6 +82,10 @@ pub const TokenReader = struct {
         return true;
     }
 
+    pub fn free(self: TokenReader, allocator: *std.mem.Allocator) void {
+        allocator.free(self.tokens);
+    }
+
     const ReadFormError = error{
         OutOfMemory, EndOfTokens, UnterminatedList, UnterminatedString, Overflow, InvalidCharacter, InvalidEscape
     };
