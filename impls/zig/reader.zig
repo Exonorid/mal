@@ -197,10 +197,14 @@ pub const TokenReader = struct {
             '"' => {
                 return types.MalType{ .String = try readString(token, allocator) };
             },
+            //Keyword
+            ':' => {
+                return types.MalType{ .Sym = try std.fmt.allocPrint(allocator, "\u{029E}{s}", .{token[1..]}) };
+            },
             else => {}
         }
         //Default to symbol
-        return types.MalType{ .Sym = token };
+        return types.MalType{ .Sym = try allocator.dupe(u8, token) };
     }
 };
 

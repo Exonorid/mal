@@ -26,6 +26,9 @@ pub const MalType = union(enum) {
             .String => |str| {
                 allocator.free(str);
             },
+            .Sym => |sym| {
+                allocator.free(sym);
+            },
             else => {}
         }
     }

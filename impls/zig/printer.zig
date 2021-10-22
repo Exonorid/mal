@@ -1,3 +1,4 @@
+const std = @import("std");
 const types = @import("types.zig");
 
 //It'd be more idiomatic to add a format function to MalType,
@@ -24,7 +25,13 @@ pub fn prStr(writer: anytype, value: types.MalType) @TypeOf(writer).Error!void {
         .Int => |int| try writer.print("{d}", .{int}),
         .Bool => |b| try writer.print("{}", .{b}),
         .String => |str| try writer.print("\"{s}\"", .{str}),
-        .Sym => |sym| try writer.print("{s}", .{sym}),
+        .Sym => |sym| {
+            if(std.mem.startsWith(u8, sym, "\u{029E}")) { //Keyword
+                try writer.print(":{s}", .{sym["\u{029E}".len..]});
+            } else {
+                try writer.print("{s}", .{sym});
+            }
+        },
     }
 }
 
