@@ -83,7 +83,7 @@ pub const TokenReader = struct {
     }
 
     const ReadFormError = error{
-        OutOfMemory, EndOfTokens, UnterminatedList, UnterminatedString, Overflow, InvalidCharacter
+        OutOfMemory, EndOfTokens, UnterminatedList, UnterminatedString, Overflow, InvalidCharacter, InvalidEscape
     };
 
     pub fn readForm(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
@@ -93,7 +93,7 @@ pub const TokenReader = struct {
         } else if(std.mem.eql(u8, next_token, "[")) {
             return reader.readListSquare(allocator);
         } else {
-            return readAtom(reader);
+            return readAtom(reader, allocator);
         }
     }
 
@@ -136,12 +136,35 @@ pub const TokenReader = struct {
         return std.fmt.parseInt(i64, token, 10);
     }
 
-    fn readString(token: Token) ![]const u8 {
-        if(token.len < 2 or token[token.len - 1] != '"') return error.UnterminatedString;
-        return token[1..token.len - 1];
+    fn unescape(ch: u8) !u8 {
+        return switch(ch) {
+            'n' => '\n',
+            '\\' => '\\',
+            '\"' => '\"',
+            else => error.InvalidEscape,
+        };
     }
 
-    fn readAtom(reader: *TokenReader) ReadFormError!types.MalType {
+    fn readString(token: Token, allocator: *std.mem.Allocator) ![]const u8 {
+        var out = try std.ArrayList(u8).initCapacity(allocator, token.len);
+        defer out.deinit();
+
+        var i: usize = 1;
+        while(i < token.len) : (i += 1) {
+            switch(token[i]) {
+                '\\' => {
+                    i += 1;
+                    try out.append(try unescape(token[i]));
+                },
+                '"' => break,
+                else => try out.append(token[i])
+            }
+        } else return error.UnterminatedString;
+
+        return out.toOwnedSlice();
+    }
+
+    fn readAtom(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
         const token = reader.next().?;
         switch(token[0]) {
             //Integer
@@ -165,7 +188,7 @@ pub const TokenReader = struct {
             },
             //String
             '"' => {
-                return types.MalType{ .String = try readString(token) };
+                return types.MalType{ .String = try readString(token, allocator) };
             },
             else => {}
         }
