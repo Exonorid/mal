@@ -19,7 +19,7 @@ fn rep(str: []const u8, allocator: *std.mem.Allocator, writer: anytype) !void {
     var token_reader = try read(str, allocator);
     defer token_reader.free(allocator);
 
-    const parsed = try eval(&token_reader, allocator);
+    var parsed = try eval(&token_reader, allocator);
     defer parsed.free(allocator);
 
     try print(parsed, writer);
@@ -60,6 +60,10 @@ pub fn main() !void {
                 std.log.err("unbalanced parentheses", .{});
                 continue;
             },
+            error.UnterminatedVector => {
+                std.log.err("unbalanced brackets", .{});
+                continue;
+            },
             error.UnterminatedString => {
                 std.log.err("unbalanced quotes", .{});
                 continue;
@@ -76,8 +80,24 @@ pub fn main() !void {
                 std.log.err("invalid escape sequence in string literal", .{});
                 continue;
             },
+            error.InvalidMapKey => {
+                std.log.err("map keys can only be a string or a keyword", .{});
+                continue;
+            },
+            error.DuplicateMapKey => {
+                std.log.err("duplicate map key encountered", .{});
+                continue;
+            },
+            error.UnterminatedMap => {
+                std.log.err("unbalanced braces", .{});
+                continue;
+            },
+            error.MissingMapValue => {
+                std.log.err("each map key must have an associated value", .{});
+                continue;
+            },
             else => {
-                std.log.emerg("Unrecoverable error {}", .{err});
+                std.log.emerg("unrecoverable error {}", .{err});
                 std.process.exit(1);
             }
         };

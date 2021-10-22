@@ -87,7 +87,25 @@ pub const TokenReader = struct {
     }
 
     const ReadFormError = error{
-        OutOfMemory, EndOfTokens, UnterminatedList, UnterminatedString, Overflow, InvalidCharacter, InvalidEscape
+        //Allocator error
+        OutOfMemory,
+
+        //Misc. error
+        EndOfTokens,
+        UnterminatedList,
+        UnterminatedVector,
+        UnterminatedString,
+        InvalidEscape,
+
+        //Int parsing error
+        Overflow,
+        InvalidCharacter,
+
+        //Hashmap error
+        InvalidMapKey,
+        DuplicateMapKey,
+        UnterminatedMap,
+        MissingMapValue,
     };
 
     pub fn readForm(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
@@ -96,6 +114,8 @@ pub const TokenReader = struct {
             return reader.readList(allocator);
         } else if(std.mem.eql(u8, next_token, "[")) {
             return reader.readVector(allocator);
+        } else if(std.mem.eql(u8, next_token, "{")) {
+            return reader.readMap(allocator);
         } else {
             return readAtom(reader, allocator);
         }
@@ -131,12 +151,42 @@ pub const TokenReader = struct {
             } else break;
         } else {
             //EOF reached before ']'
-            return error.UnterminatedList;
+            return error.UnterminatedVector;
         }
         std.log.debug("Vector end at index {}", .{reader.pos});
         std.debug.assert(reader.skip());
         //End of vector ']'
         return types.MalType{ .Vector = elems.toOwnedSlice() };
+    }
+
+    fn readMap(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
+        std.log.debug("Hash map start at index {}", .{reader.pos});
+        std.debug.assert(reader.skip());
+
+        var map = std.StringHashMap(types.MalType).init(allocator);
+        errdefer map.deinit();
+
+        while(reader.peek()) |next_token| {
+            if(!std.mem.eql(u8, next_token, "}")) {
+                const key_atom = try reader.readForm(allocator);
+                if(key_atom != .String) return error.InvalidMapKey;
+                const key = key_atom.String;
+                if(map.contains(key)) return error.DuplicateMapKey;
+                const value_token = reader.peek() orelse return error.UnterminatedMap;
+                if(!std.mem.eql(u8, value_token, "}")) {
+                    const value = try reader.readForm(allocator);
+                    try map.put(key, value);
+                } else return error.MissingMapValue;
+            } else break;
+        } else {
+            //EOF reached before '}'
+            return error.UnterminatedMap;
+        }
+
+        std.log.debug("Hash map end at index {}", .{reader.pos});
+        std.debug.assert(reader.skip());
+        //End of hash map '}'
+        return types.MalType{ .HashMap = map.unmanaged };
     }
 
     fn readInt(token: Token) !i64 {
@@ -155,6 +205,8 @@ pub const TokenReader = struct {
     fn readString(token: Token, allocator: *std.mem.Allocator) ![]const u8 {
         var out = try std.ArrayList(u8).initCapacity(allocator, token.len);
         defer out.deinit();
+
+        std.debug.assert(token[0] == '"');
 
         var i: usize = 1;
         while(i < token.len) : (i += 1) {
@@ -199,7 +251,7 @@ pub const TokenReader = struct {
             },
             //Keyword
             ':' => {
-                return types.MalType{ .Sym = try std.fmt.allocPrint(allocator, "\u{029E}{s}", .{token[1..]}) };
+                return types.MalType{ .String = try std.fmt.allocPrint(allocator, "\u{029E}{s}", .{token[1..]}) };
             },
             else => {}
         }

@@ -22,16 +22,29 @@ pub fn prStr(writer: anytype, value: types.MalType) @TypeOf(writer).Error!void {
             }
             try writer.writeByte(']');
         },
+        .HashMap => |map| {
+            try writer.writeByte('{');
+            var iter = map.iterator();
+            var first: bool = true;
+            while(iter.next()) |entry| {
+                if(!first) try writer.writeByte(' ');
+                try prStr(writer, types.MalType{ .String = entry.key_ptr.* });
+                try writer.writeByte(' ');
+                try prStr(writer, entry.value_ptr.*);
+                first = false;
+            }
+            try writer.writeByte('}');
+        },
         .Int => |int| try writer.print("{d}", .{int}),
         .Bool => |b| try writer.print("{}", .{b}),
-        .String => |str| try writer.print("\"{s}\"", .{str}),
-        .Sym => |sym| {
-            if(std.mem.startsWith(u8, sym, "\u{029E}")) { //Keyword
-                try writer.print(":{s}", .{sym["\u{029E}".len..]});
+        .String => |str| {
+            if(std.mem.startsWith(u8, str, "\u{029E}")) { //Keyword
+                try writer.print(":{s}", .{str["\u{029E}".len..]});
             } else {
-                try writer.print("{s}", .{sym});
+                try writer.print("\"{s}\"", .{str});
             }
         },
+        .Sym => |sym| try writer.print("{s}", .{sym}),
     }
 }
 
