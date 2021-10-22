@@ -93,15 +93,15 @@ pub const TokenReader = struct {
     pub fn readForm(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
         const next_token = reader.peek() orelse return error.EndOfTokens;
         if(std.mem.eql(u8, next_token, "(")) {
-            return reader.readListParen(allocator);
+            return reader.readList(allocator);
         } else if(std.mem.eql(u8, next_token, "[")) {
-            return reader.readListSquare(allocator);
+            return reader.readVector(allocator);
         } else {
             return readAtom(reader, allocator);
         }
     }
 
-    fn readListParen(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
+    fn readList(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
         std.log.debug("List start at index {}", .{reader.pos});
         std.debug.assert(reader.skip());
         var elems = std.ArrayList(types.MalType).init(allocator);
@@ -120,7 +120,8 @@ pub const TokenReader = struct {
         return types.MalType{ .List = elems.toOwnedSlice() };
     }
 
-    fn readListSquare(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
+    fn readVector(reader: *TokenReader, allocator: *std.mem.Allocator) ReadFormError!types.MalType {
+        std.log.debug("Vector start at index {}", .{reader.pos});
         std.debug.assert(reader.skip());
         var elems = std.ArrayList(types.MalType).init(allocator);
         defer elems.deinit();
@@ -132,8 +133,10 @@ pub const TokenReader = struct {
             //EOF reached before ']'
             return error.UnterminatedList;
         }
-        //End of list ']'
-        return types.MalType{ .List = elems.toOwnedSlice() };
+        std.log.debug("Vector end at index {}", .{reader.pos});
+        std.debug.assert(reader.skip());
+        //End of vector ']'
+        return types.MalType{ .Vector = elems.toOwnedSlice() };
     }
 
     fn readInt(token: Token) !i64 {

@@ -13,6 +13,14 @@ pub fn prStr(writer: anytype, value: types.MalType) @TypeOf(writer).Error!void {
             }
             try writer.writeByte(')');
         },
+        .Vector => |vec| {
+            try writer.writeByte('[');
+            for(vec) |elem, i| {
+                if(i > 0) try writer.writeByte(' ');
+                try prStr(writer, elem);
+            }
+            try writer.writeByte(']');
+        },
         .Int => |int| try writer.print("{d}", .{int}),
         .Bool => |b| try writer.print("{}", .{b}),
         .String => |str| try writer.print("\"{s}\"", .{str}),

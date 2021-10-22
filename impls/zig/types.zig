@@ -3,6 +3,7 @@ const std = @import("std");
 pub const MalType = union(enum) {
     Nil: void,
     List: []MalType,
+    Vector: []MalType,
     Int: i64,
     Bool: bool,
     String: []const u8,
@@ -15,6 +16,12 @@ pub const MalType = union(enum) {
                     elem.free(allocator);
                 }
                 allocator.free(list);
+            },
+            .Vector => |vec| {
+                for(vec) |elem| {
+                    elem.free(allocator);
+                }
+                allocator.free(vec);
             },
             .String => |str| {
                 allocator.free(str);
