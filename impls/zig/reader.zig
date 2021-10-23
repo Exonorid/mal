@@ -254,10 +254,37 @@ pub const TokenReader = struct {
             ':' => {
                 return types.MalType{ .String = try std.fmt.allocPrint(allocator, "\u{029E}{s}", .{token[1..]}) };
             },
+            //Quote
+            '\'' => {
+                return reader.readQuote(allocator, "quote");
+            },
+            //Quasiquote
+            '`' => {
+                return reader.readQuote(allocator, "quasiquote");
+            },
+            //Unquote / splice-unquote
+            '~' => {
+                if(token.len == 2 and token[1] == '@') return reader.readQuote(allocator, "splice-unquote");
+                return reader.readQuote(allocator, "unquote");
+            },
+            //Deref
+            '@' => {
+                return reader.readQuote(allocator, "deref");
+            },
             else => {}
         }
         //Default to symbol
         return types.MalType{ .Sym = try allocator.dupe(u8, token) };
+    }
+
+    fn readQuote(reader: *TokenReader, allocator: *std.mem.Allocator, name: []const u8) ReadFormError!types.MalType {
+        var quoted = try readForm(reader, allocator);
+
+        var list = try allocator.alloc(types.MalType, 2);
+        errdefer allocator.free(list);
+        list[0] = .{ .Sym = try allocator.dupe(u8, name) };
+        list[1] = quoted;
+        return types.MalType{ .List = list };
     }
 };
 
