@@ -12,7 +12,7 @@ fn eval(token_reader: *reader.TokenReader, allocator: *std.mem.Allocator) !types
 }
 
 fn print(value: types.MalType, writer: anytype) !void {
-    return printer.prStr(writer, value);
+    return printer.prStr(writer, value, true);
 }
 
 fn rep(str: []const u8, allocator: *std.mem.Allocator, writer: anytype) !void {

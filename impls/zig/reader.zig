@@ -210,6 +210,7 @@ pub const TokenReader = struct {
 
         var i: usize = 1;
         while(i < token.len) : (i += 1) {
+            std.log.debug("String token #{}: {c}", .{i, token[i]});
             switch(token[i]) {
                 '\\' => {
                     i += 1;
